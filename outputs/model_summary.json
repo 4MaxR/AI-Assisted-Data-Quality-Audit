@@ -1,0 +1,52 @@
+{
+  "n_rows": 10000,
+  "n_features": 70,
+  "base_rate": 0.0786,
+  "models": {
+    "Dummy (base rate)": {
+      "roc_auc": 0.4994476819487548,
+      "pr_auc": 0.07852010178117048,
+      "brier": 0.0724220625
+    },
+    "Logistic regression": {
+      "roc_auc": 0.49638521643411315,
+      "pr_auc": 0.08075692742414747,
+      "brier": 0.07300838177500586
+    },
+    "Logistic (balanced)": {
+      "roc_auc": 0.49492102128026216,
+      "pr_auc": 0.08083920103683165,
+      "brier": 0.24758777032309953
+    },
+    "Random forest": {
+      "roc_auc": 0.500968765861884,
+      "pr_auc": 0.08145977981358861,
+      "brier": 0.07344993609100305
+    },
+    "Gradient boosting": {
+      "roc_auc": 0.5181025002885862,
+      "pr_auc": 0.08079841002762997,
+      "brier": 0.07478269305862796
+    }
+  },
+  "best_model": "Gradient boosting",
+  "best_roc_auc": 0.5181025002885862,
+  "null_band": [
+    0.47719741117483017,
+    0.5198206236664971
+  ],
+  "null_share_ge_best": 0.1,
+  "submitted_roc_auc": 0.5058281981562518,
+  "submitted_pr_auc": 0.08068438263161506,
+  "submitted_brier": 0.07300327777744069,
+  "submitted_mean_prob": 0.07322166488364776,
+  "optimal_tau_theory": 0.2,
+  "optimal_tau_empirical": 0.6666582914572865,
+  "cost_never_target": 3930.0,
+  "cost_target_all": 10000.0,
+  "cost_perfect_model": 786.0,
+  "cost_model_at_tau_star": 4039.0,
+  "max_achievable_saving": 3144.0,
+  "value_captured_pct": -0.03466921119592875,
+  "top_decile_lift": 0.9541984732824427
+}

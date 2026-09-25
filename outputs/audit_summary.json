@@ -1,0 +1,21 @@
+{
+  "monthly_charges": {
+    "n_negative": 5,
+    "n_contaminated_mixture": 49,
+    "contaminant_weight": 0.005,
+    "contaminant_mean": 257.42,
+    "max_charge": 390.3,
+    "median_charge": 50.015
+  },
+  "churn_signal": {
+    "Logistic\nregression": 0.5176,
+    "Random forest\n(500 trees)": 0.517,
+    "Gradient\nboosting": 0.5164
+  },
+  "null_band": [
+    0.4708,
+    0.5372
+  ],
+  "pre_signup_rows": 2278,
+  "pre_signup_customers": 751
+}

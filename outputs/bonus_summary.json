@@ -1,0 +1,6 @@
+{
+  "shap_top_feature": "call_halfratio",
+  "shap_top_share": 0.034198026382288596,
+  "perm_importance_max": 0.000722708170054287,
+  "survival_feasible": false
+}

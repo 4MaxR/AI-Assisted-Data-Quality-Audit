@@ -1,0 +1,5 @@
+metric,naive,audited,change
+rows after joining customer_info to churn_labels,"10,200","10,000",-200
+churn_rate,7.8137%,7.8600%,+0.046 pp
+mean_MonthlyCharges,50.962,50.001,-0.961
+mean_Age,43.425,43.273,-0.152

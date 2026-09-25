@@ -1,0 +1,7 @@
+ratio,theory_tau,never,everybody,model,cheapest
+1:1,1.0,786,10000,3930.0,everybody
+2:1,0.5,1572,10000,3934.0,everybody
+3:1,0.3333,2358,10000,3946.0,everybody
+5:1,0.2,3930,10000,4039.0,everybody
+10:1,0.1,7860,10000,4596.0,everybody
+20:1,0.05,15720,10000,6407.0,everybody

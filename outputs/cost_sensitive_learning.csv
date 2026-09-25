@@ -1,0 +1,3 @@
+variant,roc_auc,best_tau,min_cost,vs_never,pct_of_achievable
+plain logistic,0.49638521643411315,0.42366834170854273,3930.0,0.0,0.0
+cost-weighted logistic,0.4957946503578192,0.773316582914573,3930.0,0.0,0.0
