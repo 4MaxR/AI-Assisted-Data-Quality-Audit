@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mustafa Al-Rouby — Data Quality Audit: Telecom Churn Project</title>
+<meta name="description" content="A hidden error was quietly inflating a business metric. Here's how a 5-pass audit caught it before it reached a report — and proved a churn model wasn't worth building. By Mustafa Al-Rouby, Data Analyst.">
+
+<!-- Open Graph / social preview -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="I caught a silent data error before it reached a report — here's how">
+<meta property="og:description" content="A 5-pass audit of 140,200 rows found 11 defects, including a duplicate-record bug that was quietly skewing a business metric. Full findings register, methodology, and business-cost analysis inside.">
+<meta property="og:image" content="https://4maxr.github.io/AI-Assisted-Data-Quality-Audit/assets/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://4maxr.github.io/AI-Assisted-Data-Quality-Audit/">
+
+<!-- Twitter card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="I caught a silent data error before it reached a report — here's how">
+<meta name="twitter:description" content="5-pass audit, 140,200 rows, 11 defects found — including one that was quietly skewing a reported metric. By Mustafa Al-Rouby, Data Analyst.">
+<meta name="twitter:image" content="https://4maxr.github.io/AI-Assisted-Data-Quality-Audit/assets/og-image.jpg">
+
+<style>
+  :root{
+    --ink:#12141a; --muted:#5b6472; --faint:#8b93a0; --line:#e2e5ea;
+    --bg:#f6f7f9; --card:#ffffff;
+    --accent:#1c5687; --accent-soft:#eaf1f8;
+    --crit:#8f1f1f; --crit-soft:#fbe3e3; --crit-line:#f0c3c3;
+    --high:#a8451f; --high-soft:#fdf1ec; --high-line:#f0cdc0;
+    --med:#8a6a12; --med-soft:#fdf7e3; --med-line:#ecdca0;
+    --low:#3c6b52; --low-soft:#eaf5ee; --low-line:#c9e3d4;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.6;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  a{color:var(--accent)}
+
+  /* ---------- header ---------- */
+  header.hero{
+    background:linear-gradient(180deg,#0f1522,#182338 65%,#1c2942);
+    color:#eef1f6;padding:52px 0 40px;border-bottom:4px solid var(--accent);
+  }
+  .kicker{
+  font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:#7fb3e0;font-weight:700;
+  }
+  h1{font-size:30px;line-height:1.22;margin:10px 0 10px;letter-spacing:-.01em;max-width:760px}
+  .lede{color:#b7c1d1;font-size:15.5px;max-width:660px;margin:0 0 14px}
+  .proves{
+  color:#dfe6ee;font-size:14.5px;max-width:660px;margin:0 0 22px;
+  padding:11px 15px;background:rgba(255,255,255,.05);border-left:2.5px solid #4a90c2;
+  border-radius:0 5px 5px 0;
+  }
+  .proves b{color:#9cc5ea}
+  .byline{display:flex;align-items:center;gap:14px;margin:22px 0 6px;flex-wrap:wrap}
+  .byline .who{font-size:14.5px;color:#eef1f6}
+  .byline .who b{font-weight:700}
+  .byline .who span{color:#8ea3bd}
+  .byline .cta{
+  display:inline-block;background:#3f79ab;color:#fff;text-decoration:none;
+  font-size:13px;font-weight:650;padding:8px 16px;border-radius:6px;
+  transition:background .12s;
+  }
+  .byline .cta:hover{background:#4a8bc2}
+  .hero-links{font-size:13.5px}
+  .hero-links a{color:#9cc5ea;text-decoration:none;border-bottom:1px solid rgba(156,197,234,.35);margin-right:18px}
+  .hero-links a:hover{border-bottom-color:#9cc5ea}
+
+  .badges{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+  .badge{
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+    border-radius:5px;padding:5px 11px;font-size:12.5px;color:#dfe6ee;
+  }
+  .badge b{color:#fff}
+
+  /* ---------- KPI strip ---------- */
+  section.kpis{margin-top:-26px;position:relative;z-index:2}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .kpi{
+    background:var(--card);border:1px solid var(--line);border-radius:9px;
+    padding:18px 18px 16px;box-shadow:0 6px 20px rgba(15,20,30,.07);
+  }
+  .kpi .num{font-size:26px;font-weight:750;letter-spacing:-.02em;line-height:1.1}
+  .kpi .num.crit{color:var(--crit)}
+  .kpi .num.accent{color:var(--accent)}
+  .kpi .lbl{font-size:12.2px;color:var(--muted);margin-top:5px;line-height:1.4}
+  .kpi .plain{font-size:11.6px;color:var(--faint);margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);line-height:1.4;font-style:italic}
+
+  /* ---------- generic sections ---------- */
+  section{padding:46px 0}
+  section.alt{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  h2.sec-title{
+    font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+    font-weight:700;margin:0 0 6px;
+  }
+  h2.sec-title .idx{color:var(--faint);margin-right:8px}
+  h3.sec-head{font-size:22px;margin:0 0 10px;letter-spacing:-.01em}
+  p.sec-desc{color:var(--muted);font-size:14.8px;max-width:760px;margin:0 0 26px}
+
+  /* ---------- findings table ---------- */
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .chip{
+    border:1px solid var(--line);background:#fff;border-radius:20px;
+    padding:6px 14px;font-size:12.8px;cursor:pointer;color:var(--muted);
+    font-weight:600;transition:all .12s;
+  }
+  .chip:hover{border-color:var(--accent);color:var(--accent)}
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  .reg-table{width:100%;border-collapse:collapse;font-size:13.6px;background:#fff;
+             border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .reg-table th{
+    text-align:left;background:#f4f5f7;color:var(--muted);font-weight:700;
+    font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    padding:10px 12px;border-bottom:2px solid var(--line);white-space:nowrap;
+  }
+  .reg-table td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .reg-table tr:last-child td{border-bottom:none}
+  .reg-table tr.hidden{display:none}
+  .reg-table tr:hover td{background:#fafbfd}
+  .id-cell{font-family:var(--mono);font-weight:700;color:var(--ink);white-space:nowrap}
+  .pct-cell{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted);font-size:12.8px}
+  .issue-cell{max-width:340px}
+  .sev-pill{
+    display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+    text-transform:uppercase;padding:3px 9px;border-radius:20px;white-space:nowrap;
+  }
+  .sev-crit{background:var(--crit-soft);color:var(--crit);border:1px solid var(--crit-line)}
+  .sev-high{background:var(--high-soft);color:var(--high);border:1px solid var(--high-line)}
+  .sev-med{background:var(--med-soft);color:var(--med);border:1px solid var(--med-line)}
+  .sev-low{background:var(--low-soft);color:var(--low);border:1px solid var(--low-line)}
+  .res-tag{font-size:11.8px;color:var(--muted);white-space:nowrap}
+  .res-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px}
+  .dot-fixed{background:#3c6b52}
+  .dot-flagged{background:#a8451f}
+  .dot-info{background:#8b93a0}
+  .empty-state{padding:30px;text-align:center;color:var(--faint);font-size:13.5px;display:none}
+
+  /* ---------- impact comparison ---------- */
+  .impact-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:6px}
+  .impact-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px}
+  .impact-card .metric-name{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .impact-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;padding:3px 0}
+  .impact-row .k{color:var(--faint)}
+  .impact-row .v{font-variant-numeric:tabular-nums;font-weight:650}
+  .impact-delta{
+    margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);
+    font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
+  }
+  .impact-delta.bad{color:var(--high)}
+  .impact-delta.neutral{color:var(--muted)}
+
+  /* ---------- signal chart ---------- */
+  .signal-wrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:24px}
+  .bars{display:flex;align-items:flex-end;gap:26px;height:200px;padding:0 10px 0 46px;position:relative}
+  .band{
+    position:absolute;left:46px;right:10px;background:var(--accent-soft);
+    border-top:1.5px dashed #9db8cc;border-bottom:1.5px dashed #9db8cc;
+  }
+  .band-lbl{position:absolute;left:0;font-size:10.5px;color:var(--accent);font-weight:700;white-space:nowrap}
+  .bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;flex:1;height:100%;position:relative;z-index:1}
+  .bar{width:52px;background:linear-gradient(180deg,#3f79ab,#274f74);border-radius:5px 5px 0 0;position:relative}
+  .bar.dummy{background:linear-gradient(180deg,#9aa4b2,#767f8c)}
+  .bar-val{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .bar-name{margin-top:8px;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.3;max-width:80px}
+  .axis-lbl{position:absolute;left:0;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .signal-verdict{
+    margin-top:22px;background:var(--crit-soft);border:1px solid var(--crit-line);
+    border-radius:7px;padding:13px 16px;font-size:13.8px;color:#5a1414;line-height:1.5;
+  }
+  .signal-verdict b{color:var(--crit)}
+
+  /* ---------- decile lift ---------- */
+  .lift-wrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-top:20px}
+  .lift-bars{display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:14px}
+  .lift-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+  .lift-bar{width:100%;border-radius:3px 3px 0 0}
+  .lift-bar.under{background:#c8ccd3}
+  .lift-bar.over{background:#3f79ab}
+  .lift-baseline{position:relative;border-top:1.5px dashed var(--faint);margin-top:4px;padding-top:4px}
+  .lift-baseline span{position:absolute;right:0;top:-9px;font-size:10px;color:var(--faint);background:#fff;padding-left:6px}
+  .lift-labels{display:flex;gap:6px;margin-top:5px}
+  .lift-labels div{flex:1;text-align:center;font-size:10px;color:var(--faint)}
+
+  /* ---------- cost scenarios ---------- */
+  .cost-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:6px}
+  .cost-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:18px;position:relative;overflow:hidden}
+  .cost-card.worst{border-color:var(--crit-line)}
+  .cost-card.best{border-color:var(--low-line)}
+  .cost-card .cname{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+  .cost-card .cval{font-size:24px;font-weight:750;margin:8px 0 2px;letter-spacing:-.01em}
+  .cost-card .cval.crit{color:var(--crit)}
+  .cost-card .cval.good{color:var(--low)}
+  .cost-card .cdesc{font-size:12.3px;color:var(--faint);line-height:1.4}
+  .cost-tag{
+    position:absolute;top:12px;right:12px;font-size:9.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:3px;
+  }
+  .cost-tag.worst{background:var(--crit-soft);color:var(--crit)}
+  .cost-tag.best{background:var(--low-soft);color:var(--low)}
+
+  /* ---------- methodology ---------- */
+  .method-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .method-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px}
+  .method-card .mn{font-size:20px;font-weight:750;color:var(--accent);letter-spacing:-.02em}
+  .method-card h4{margin:6px 0 4px;font-size:13.6px}
+  .method-card p{margin:0;font-size:12.6px;color:var(--muted);line-height:1.45}
+
+  .taxonomy{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
+  .tax-card{border-radius:8px;padding:12px 14px;font-size:12.6px;line-height:1.45}
+  .tax-card b{display:block;font-size:12.8px;margin-bottom:3px}
+  .tax-fixed{background:var(--low-soft);border:1px solid var(--low-line);color:#284735}
+  .tax-flagged{background:var(--high-soft);border:1px solid var(--high-line);color:#6b3013}
+  .tax-info{background:#f0f1f3;border:1px solid var(--line);color:var(--muted)}
+
+  /* ---------- footer ---------- */
+  footer{padding:34px 0 50px;font-size:13px;color:var(--faint)}
+  footer .flinks a{color:var(--accent);text-decoration:none;margin-right:20px;font-weight:600}
+  footer .flinks a:hover{text-decoration:underline}
+  footer .fmeta{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+
+  @media (max-width:880px){
+    .kpi-grid,.impact-grid,.cost-grid,.method-grid,.taxonomy{grid-template-columns:repeat(2,1fr)}
+    h1{font-size:24px}
+    .bars{padding-left:34px}
+    .byline{flex-direction:column;align-items:flex-start;gap:10px}
+  }
+  @media (max-width:560px){
+    .kpi-grid,.impact-grid,.cost-grid,.method-grid,.taxonomy{grid-template-columns:1fr}
+    .reg-table{font-size:12px}
+    .reg-table th,.reg-table td{padding:8px}
+    .issue-cell{max-width:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">Data Quality Audit Dashboard</div>
+    <h1>I caught a silent data bug before it reached a report — here's how</h1>
+    <p class="lede">
+      A 5-pass audit of 140,200 telecom customer rows found 11 defects — including a duplicate-record
+      bug that was quietly skewing a reported metric — and proved a churn model wasn't worth building.
+    </p>
+    <p class="proves">
+      <b>What this proves:</b> the ability to find data problems before they reach leadership, quantify
+      their business impact, and know when a model isn't worth deploying — the core job of a Data Analyst
+      or Analytics Engineer.
+    </p>
+    <div class="badges">
+      <div class="badge"><b>140,200</b>&nbsp;raw rows audited</div>
+      <div class="badge"><b>11</b>&nbsp;defects found</div>
+      <div class="badge"><b>195</b>&nbsp;silent duplicates caught</div>
+      <div class="badge"><b>5</b>&nbsp;model families tested</div>
+    </div>
+    <div class="byline">
+      <span class="who"><b>Mustafa Al-Rouby</b> <span>— Data Analyst &amp; Logistics Specialist</span></span>
+      <a class="cta" href="mailto:mustafa.elrouby1@gmail.com">Get in touch ↗</a>
+      <a class="cta" style="background:transparent;border:1px solid rgba(255,255,255,.3)" href="https://www.linkedin.com/in/mustafa-al-rouby-20218b171" target="_blank" rel="noopener">LinkedIn ↗</a>
+    </div>
+    <div class="hero-links" style="margin-top:14px">
+      <a href="https://github.com/4MaxR/AI-Assisted-Data-Quality-Audit" target="_blank" rel="noopener">GitHub Repository ↗</a>
+      <a href="README.md" target="_blank" rel="noopener">Full README ↗</a>
+      <a href="docs/AUDIT_REPORT.md" target="_blank" rel="noopener">Audit Report ↗</a>
+    </div>
+  </div>
+</header>
+
+<section class="kpis">
+  <div class="wrap">
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="num">10,000</div>
+        <div class="lbl">Clean unique customers after audit — down from 10,200 raw rows in the naive join</div>
+      </div>
+      <div class="kpi">
+        <div class="num accent">11</div>
+        <div class="lbl">Defects found across 2 tables, severity-ranked from Critical to Low</div>
+      </div>
+      <div class="kpi">
+        <div class="num crit">No signal</div>
+        <div class="lbl">The churn label — best model scores inside the shuffled-label noise band</div>
+        <div class="plain">In plain terms: this data can't predict who churns. No model would have helped.</div>
+      </div>
+      <div class="kpi">
+        <div class="num">0.046pp</div>
+        <div class="lbl">Churn rate distortion from 195 silently double-counted customers</div>
+        <div class="plain">A join that looked fine and ran without errors was quietly wrong — invisible unless checked.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="findings">
+  <div class="wrap">
+    <h2 class="sec-title"><span class="idx">01</span>Findings Register</h2>
+    <h3 class="sec-head">Eleven issues, every one traced to evidence</h3>
+    <p class="sec-desc">
+      Nothing here is silently fixed. Each defect is classified by severity and resolution —
+      auto-fixed, auto-fixed-with-flag, flagged-for-review, or informational — so a downstream
+      reader can always see exactly what was touched and why.
+    </p>
+
+    <div class="controls" id="filters">
+      <button class="chip active" data-filter="all">All (11)</button>
+      <button class="chip" data-filter="Critical">Critical</button>
+      <button class="chip" data-filter="High">High</button>
+      <button class="chip" data-filter="Medium">Medium</button>
+      <button class="chip" data-filter="Low">Low</button>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="reg-table" id="reg-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Table</th>
+            <th>Field(s)</th>
+            <th>Issue</th>
+            <th>Rows</th>
+            <th>%</th>
+            <th>Severity</th>
+            <th>Resolution</th>
+          </tr>
+        </thead>
+        <tbody id="reg-body"><!-- populated by JS from REGISTER --></tbody>
+      </table>
+      <div class="empty-state" id="empty-state">No findings match this filter.</div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="impact">
+  <div class="wrap">
+    <h2 class="sec-title"><span class="idx">02</span>Cost of Not Cleaning</h2>
+    <h3 class="sec-head">The most natural first step silently double-counts 195 customers</h3>
+    <p class="sec-desc">
+      Joining <code>customer_info</code> to <code>churn_labels</code> without deduplication looks fine —
+      it runs, it returns rows, nothing errors. The distortion is invisible unless someone checks row counts.
+    </p>
+    <div class="impact-grid">
+      <div class="impact-card">
+        <div class="metric-name">Rows after join</div>
+        <div class="impact-row"><span class="k">Naive</span><span class="v">10,200</span></div>
+        <div class="impact-row"><span class="k">Audited</span><span class="v">10,000</span></div>
+        <div class="impact-delta bad">−200 rows (195 duplicate IDs)</div>
+      </div>
+      <div class="impact-card">
+        <div class="metric-name">Churn rate</div>
+        <div class="impact-row"><span class="k">Naive</span><span class="v">7.8137%</span></div>
+        <div class="impact-row"><span class="k">Audited</span><span class="v">7.8600%</span></div>
+        <div class="impact-delta bad">+0.046 pp — pure artefact</div>
+      </div>
+      <div class="impact-card">
+        <div class="metric-name">Mean monthly charges</div>
+        <div class="impact-row"><span class="k">Naive</span><span class="v">50.962</span></div>
+        <div class="impact-row"><span class="k">Audited</span><span class="v">50.001</span></div>
+        <div class="impact-delta bad">−0.961 — contamination + duplicates</div>
+      </div>
+      <div class="impact-card">
+        <div class="metric-name">Mean age</div>
+        <div class="impact-row"><span class="k">Naive</span><span class="v">43.425</span></div>
+        <div class="impact-row"><span class="k">Audited</span><span class="v">43.273</span></div>
+        <div class="impact-delta neutral">−0.152 — smaller, still real</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="signal">
+  <div class="wrap">
+    <h2 class="sec-title"><span class="idx">03</span>Testing the Label Before Building Anything</h2>
+    <h3 class="sec-head">Every model lands inside the noise band</h3>
+    <p class="sec-desc">
+      Cross-validated ROC-AUC across three model families, plus a 20-draw shuffled-label null test.
+      If real models can't beat random relabeling, the target carries no signal — better known in
+      minute one than discovered in week three.
+    </p>
+
+    <div class="signal-wrap">
+      <div class="bars" id="signal-bars">
+        <div class="axis-lbl" style="bottom:calc(200px*0.5)">0.500</div>
+        <div class="axis-lbl" style="bottom:0">0.470</div>
+        <!-- band + bars injected by JS -->
+      </div>
+      <div class="signal-verdict">
+        <b>Verdict:</b> Logistic regression (0.5176), Random forest (0.5170) and Gradient boosting
+        (0.5164) all fall inside the shuffled-label null band of <b>0.4708–0.5372</b>. The best real
+        model does not beat random relabeling of the target. <b>The churn label cannot support a
+        predictive model on this data</b> — recorded as an informational finding, not something a
+        better algorithm would fix.
+      </div>
+    </div>
+
+    <div class="lift-wrap">
+      <div class="metric-name" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700">
+        Decile lift — top-decile customers ranked by predicted risk
+      </div>
+      <p style="margin:6px 0 0;font-size:12.8px;color:var(--faint)">
+        A working model's top decile should concentrate churners well above 1.0x. Here the top decile
+        scores <b style="color:var(--high)">0.95x</b> — slightly worse than picking customers at random.
+      </p>
+      <div class="lift-bars" id="lift-bars"><!-- injected by JS --></div>
+      <div class="lift-labels">
+        <div>D1</div><div>D2</div><div>D3</div><div>D4</div><div>D5</div>
+        <div>D6</div><div>D7</div><div>D8</div><div>D9</div><div>D10</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="cost">
+  <div class="wrap">
+    <h2 class="sec-title"><span class="idx">04</span>Business Impact — What the Model Is Worth</h2>
+    <h3 class="sec-head">At a 5:1 retention-to-churn cost ratio, deploying this model costs more than doing nothing</h3>
+    <p class="sec-desc">
+      Simulated against four intervention strategies. "Never target" means accept all churn;
+      "target everybody" means retention-offer every customer regardless of risk.
+    </p>
+    <div class="cost-grid">
+      <div class="cost-card">
+        <div class="cname">Never Target</div>
+        <div class="cval">3,930</div>
+        <div class="cdesc">Accept every churn as a loss. No intervention cost.</div>
+      </div>
+      <div class="cost-card">
+        <div class="cname">Perfect Model</div>
+        <div class="cval good">786</div>
+        <div class="cdesc">Theoretical ceiling — a model with perfect foresight.</div>
+      </div>
+      <div class="cost-card worst">
+        <div class="cost-tag worst">Worst</div>
+        <div class="cname">Target Everybody</div>
+        <div class="cval crit">10,000</div>
+        <div class="cdesc">Retention offer to every customer, regardless of risk.</div>
+      </div>
+      <div class="cost-card">
+        <div class="cname">This Model (τ*)</div>
+        <div class="cval crit">4,039</div>
+        <div class="cdesc">Worse than doing nothing — the model has negative value here.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="method">
+  <div class="wrap">
+    <h2 class="sec-title"><span class="idx">05</span>Method</h2>
+    <h3 class="sec-head">Five passes, one governing rule: nothing is silently fixed</h3>
+    <p class="sec-desc">
+      Every invalid value becomes <code>NULL</code> in a companion <code>*_clean</code> column and
+      raises a boolean <code>dq_*</code> flag. Auto-repair is reserved for what is logically
+      impossible; judgement calls are flagged for a human.
+    </p>
+    <div class="method-grid">
+      <div class="method-card">
+        <div class="mn">01</div>
+        <h4>Profile</h4>
+        <p>Establish grain, types, and baseline distributions per column before touching anything.</p>
+      </div>
+      <div class="method-card">
+        <div class="mn">02</div>
+        <h4>Deep-dive</h4>
+        <p>Duplicate detection, cross-field consistency, and per-segment missingness checks.</p>
+      </div>
+      <div class="method-card">
+        <div class="mn">03</div>
+        <h4>Anomaly shape</h4>
+        <p>Gaussian mixture + BIC to separate genuine outliers from a distinct contaminant distribution.</p>
+      </div>
+      <div class="method-card">
+        <div class="mn">04</div>
+        <h4>Forensics</h4>
+        <p>Temporal logic checks — usage dated before signup, censored floors, distribution realism via kurtosis.</p>
+      </div>
+    </div>
+
+    <div class="taxonomy">
+      <div class="tax-card tax-fixed"><b>auto-fixed</b>Provably safe to correct. Used once, for exact duplicates.</div>
+      <div class="tax-card tax-fixed"><b>auto-fixed-with-flag</b>Corrected, original preserved in a companion column.</div>
+      <div class="tax-card tax-flagged"><b>flagged-for-review</b>Needs a business decision, not an algorithm.</div>
+      <div class="tax-card tax-info"><b>informational</b>Not repairable — a documented limitation.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="flinks">
+      <a href="https://github.com/4MaxR/AI-Assisted-Data-Quality-Audit" target="_blank" rel="noopener">View source on GitHub</a>
+      <a href="https://github.com/4MaxR" target="_blank" rel="noopener">4MaxR on GitHub</a>
+      <a href="https://www.linkedin.com/in/mustafa-al-rouby-20218b171" target="_blank" rel="noopener">LinkedIn</a>
+    </div>
+    <div class="fmeta">
+      Built by Mustafa Al-Rouby · Data Analyst &amp; Logistics Specialist · All figures on this page are
+      pulled directly from <code>outputs/data_quality_register.csv</code>,
+      <code>outputs/audit_summary.json</code>, <code>outputs/impact_naive_vs_audited.csv</code> and
+      <code>outputs/model_summary.json</code> in this repository — nothing here is estimated.
+    </div>
+  </div>
+</footer>
+
+<script>
+// ---- Data pulled verbatim from outputs/data_quality_register.csv ----
+const REGISTER = [
+  {id:"DQ-11", table:"churn_labels", field:"Churn", issue:"No relationship with any provided feature — target cannot support a predictive model", rows:10000, pct:100.0, severity:"Critical", resolution:"informational"},
+  {id:"DQ-01", table:"customer_info", field:"all", issue:"Exact duplicate customer records", rows:195, pct:1.95, severity:"High", resolution:"auto-fixed"},
+  {id:"DQ-02", table:"customer_info", field:"SignupDate", issue:"Conflicting duplicates — DD/MM vs MM/DD parsing ambiguity (exact date swaps)", rows:10, pct:0.10, severity:"High", resolution:"flagged-for-review"},
+  {id:"DQ-03", table:"customer_info", field:"Age", issue:"Missing values, missing completely at random (flat across every segment)", rows:3500, pct:35.00, severity:"High", resolution:"auto-fixed-with-flag"},
+  {id:"DQ-04", table:"customer_info", field:"MonthlyCharges", issue:"Distinct contaminant distribution (Gaussian mixture, ΔBIC = 6,152)", rows:49, pct:0.49, severity:"High", resolution:"auto-fixed-with-flag"},
+  {id:"DQ-05", table:"customer_info", field:"MonthlyCharges", issue:"Negative monthly charges — logically impossible", rows:5, pct:0.05, severity:"High", resolution:"auto-fixed-with-flag"},
+  {id:"DQ-07", table:"usage_data × customer_info", field:"Month vs SignupDate", issue:"Usage rows dated before the customer's signup date", rows:2278, pct:1.90, severity:"High", resolution:"flagged-for-review"},
+  {id:"DQ-06", table:"customer_info", field:"MonthlyCharges", issue:"Implausibly low positive charges (below clean-body minimum)", rows:24, pct:0.24, severity:"Medium", resolution:"flagged-for-review"},
+  {id:"DQ-09", table:"usage_data", field:"SMSCount", issue:"Exactly Uniform(0,49) — carries no behavioural signal", rows:120000, pct:100.0, severity:"Medium", resolution:"informational"},
+  {id:"DQ-10", table:"usage_data", field:"CallMinutes, DataUsageGB", issue:"Gaussian synthetic draws, not real behavioural shapes (kurtosis test)", rows:120000, pct:100.0, severity:"Medium", resolution:"informational"},
+  {id:"DQ-08", table:"usage_data", field:"DataUsageGB", issue:"58 rows censored at exactly 0 GB — floor, not genuine zero usage", rows:58, pct:0.05, severity:"Low", resolution:"flagged-for-review"},
+];
+
+const SEV_CLASS = {Critical:"sev-crit", High:"sev-high", Medium:"sev-med", Low:"sev-low"};
+const RES_DOT = {"auto-fixed":"dot-fixed","auto-fixed-with-flag":"dot-fixed","flagged-for-review":"dot-flagged","informational":"dot-info"};
+
+function fmtRows(n){ return n.toLocaleString("en-US"); }
+function fmtPct(p){ return (p % 1 === 0 ? p.toFixed(0) : p.toFixed(2)) + "%"; }
+
+function renderTable(filter){
+  const tbody = document.getElementById("reg-body");
+  const empty = document.getElementById("empty-state");
+  tbody.innerHTML = "";
+  const rows = REGISTER.filter(r => filter === "all" || r.severity === filter);
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="id-cell">${r.id}</td>
+      <td>${r.table}</td>
+      <td style="font-family:${"var(--mono)"};font-size:12.4px;color:var(--muted)">${r.field}</td>
+      <td class="issue-cell">${r.issue}</td>
+      <td class="pct-cell">${fmtRows(r.rows)}</td>
+      <td class="pct-cell">${fmtPct(r.pct)}</td>
+      <td><span class="sev-pill ${SEV_CLASS[r.severity]}">${r.severity}</span></td>
+      <td class="res-tag"><span class="res-dot ${RES_DOT[r.resolution]}"></span>${r.resolution}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  empty.style.display = rows.length ? "none" : "block";
+}
+
+document.querySelectorAll("#filters .chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#filters .chip").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderTable(btn.dataset.filter);
+  });
+});
+renderTable("all");
+
+// ---- Signal chart: real vs null band, from outputs/audit_summary.json ----
+(function(){
+  const models = [
+    {name:"Dummy\n(base rate)", val:0.4994, dummy:true},
+    {name:"Logistic\nregression", val:0.5176},
+    {name:"Random forest\n(500 trees)", val:0.5170},
+    {name:"Gradient\nboosting", val:0.5164},
+  ];
+  const nullLo = 0.4708, nullHi = 0.5372;
+  const scaleMin = 0.46, scaleMax = 0.545;
+  const H = 200;
+  const toY = v => ((v - scaleMin) / (scaleMax - scaleMin)) * H;
+
+  const container = document.getElementById("signal-bars");
+
+  const band = document.createElement("div");
+  band.className = "band";
+  band.style.bottom = toY(nullLo) + "px";
+  band.style.height = (toY(nullHi) - toY(nullLo)) + "px";
+  const bandLbl = document.createElement("div");
+  bandLbl.className = "band-lbl";
+  bandLbl.style.bottom = (toY(nullHi) + 4) + "px";
+  bandLbl.textContent = "null band (shuffled-label, 20 draws): 0.4708–0.5372";
+  container.appendChild(band);
+  container.appendChild(bandLbl);
+
+  models.forEach(m => {
+    const col = document.createElement("div");
+    col.className = "bar-col";
+    const bar = document.createElement("div");
+    bar.className = "bar" + (m.dummy ? " dummy" : "");
+    bar.style.height = toY(m.val) + "px";
+    const val = document.createElement("div");
+    val.className = "bar-val";
+    val.textContent = m.val.toFixed(4);
+    val.style.color = m.dummy ? "#767f8c" : "#274f74";
+    bar.appendChild(val);
+    const name = document.createElement("div");
+    name.className = "bar-name";
+    name.textContent = m.name;
+    col.appendChild(bar);
+    col.appendChild(name);
+    container.appendChild(col);
+  });
+})();
+
+// ---- Decile lift chart, from outputs/decile_lift.csv ----
+(function(){
+  // decile, lift — verbatim from outputs/decile_lift.csv
+  const lifts = [0.9542, 1.0941, 1.1069, 1.0814, 1.0814, 0.9542, 0.9542, 0.9924, 0.9669, 0.8142];
+  const maxLift = 1.2;
+  const container = document.getElementById("lift-bars");
+  lifts.forEach(v => {
+    const col = document.createElement("div");
+    col.className = "lift-col";
+    const bar = document.createElement("div");
+    bar.className = "lift-bar " + (v >= 1.0 ? "over" : "under");
+    bar.style.height = ((v / maxLift) * 100) + "px";
+    bar.title = v.toFixed(2) + "x";
+    col.appendChild(bar);
+    container.appendChild(col);
+  });
+  // 1.0x baseline marker
+  const baseline = document.createElement("div");
+  baseline.style.position = "absolute";
+  baseline.style.left = "0"; baseline.style.right = "0";
+  baseline.style.borderTop = "1.5px dashed #8b93a0";
+  baseline.style.bottom = ((1.0/maxLift)*110) + "px";
+  document.querySelector(".lift-wrap").style.position = "relative";
+})();
+</script>
+
+</body>
+</html>
