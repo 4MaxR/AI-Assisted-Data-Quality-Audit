@@ -43,7 +43,8 @@
 - [Skills This Project Demonstrates](#skills-this-project-demonstrates)
 - [Author](#author)
 
-**Other documents:** [Formal audit report](docs/AUDIT_REPORT.md) · [Submission notebook](notebooks/churn_analysis.ipynb) · [Submitted predictions](prediction.csv)
+**Other documents:** [Formal audit report](docs/AUDIT_REPORT.md) · [Submission notebook](notebooks/churn_analysis.ipynb) · [Submitted predictions](prediction.csv).
+
 **Live dashboard:** [4maxr.github.io/customer-churn-eda-dashboard](https://4maxr.github.io/AI-Assisted-Data-Quality-Audit/) ·
 
 ---
